@@ -25,11 +25,36 @@
 """Record models."""
 
 import uuid
+from datetime import datetime
 
 from invenio_db import db
-from sqlalchemy.dialects import postgresql
-from sqlalchemy_utils.models import Timestamp
+from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy_utils.types import JSONType, UUIDType
+
+
+class Timestamp(object):
+    """Timestamp model mix-in with fractional seconds support.
+
+    SQLAlchemy-Utils timestamp model, does not have support for fractional
+    seconds.
+    """
+
+    created = db.Column(
+        db.DateTime().with_variant(mysql.DATETIME(fsp=6), "mysql"),
+        default=datetime.utcnow,
+        nullable=False
+    )
+    updated = db.Column(
+        db.DateTime().with_variant(mysql.DATETIME(fsp=6), "mysql"),
+        default=datetime.utcnow,
+        nullable=False
+    )
+
+
+@db.event.listens_for(Timestamp, 'before_update', propagate=True)
+def timestamp_before_update(mapper, connection, target):
+    """Listen for updating ."""
+    target.updated = datetime.utcnow()
 
 
 class RecordMetadata(db.Model, Timestamp):
